@@ -50,6 +50,12 @@ class Zillow_Scraper():
             return None
 
 
+    def random_move(self, page):
+        for i in range(5):
+            x = random.randint(0, 800)
+            y = random.randint(0, 600)
+            page.mouse.move(x, y)
+
     def parse(self, response):
         sel = Selector(text=response)
         result = []
@@ -58,7 +64,7 @@ class Zillow_Scraper():
             phone = agent.xpath(".//span[contains(text(),'phone')]/parent::div/text()").get()
             reviews = agent.xpath(".//span[contains(text(),'phone')]/parent::div/following-sibling::a/text()").get()
             agent_license = agent.xpath(".//div[contains(text(), 'Agent')]/text()[2]").get()
-            company = agent.xpath(".//span[contains(text(),'phone')]/parent::div//following-sibling::div[1]").get()
+            company = agent.xpath(".//span[contains(text(),'phone')]/parent::div//following-sibling::div[1]/text()").get()
             self.logger.info(f" [+] Name: {name}, Phone: {phone}, Reviews: {reviews}, License: {agent_license}, Company: {company}")
             result.append((name, phone, reviews, agent_license, company))
         return result
@@ -67,11 +73,12 @@ class Zillow_Scraper():
     def get_data(self, page, city, writer):
         page_no = 1
         city = city.lower().replace(' ','-')
-        page.route("**photos.zillowstatic.com*", lambda route: route.abort() if route.request.resource_type == "image"  else route.continue_())
+        page.route("**/*", lambda route: route.abort() if route.request.resource_type == "image"  else route.continue_())
         while True:
             page.goto(f"https://www.zillow.com/professionals/real-estate-agent-reviews/{city}/?page={page_no}")
             page.wait_for_selector("//div[@id='__next']")
             self.sleep()
+            self.random_move(page)
             result = self.parse(page.content())
             if self.is_lastPage(result):
                 break
@@ -79,10 +86,6 @@ class Zillow_Scraper():
                 writer.writerow(result)
                 page_no += 1
                 continue
-
-
-
-
 
 
     def main(self):
@@ -93,6 +96,7 @@ class Zillow_Scraper():
             self.get_data(page, city, writer)
         except Exception:
             print_exc()
+            input("enter:")
         else:
             play.stop()
             file.close()
